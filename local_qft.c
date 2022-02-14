@@ -140,12 +140,15 @@ void applyMergedPhases(amp* psi, int tMax, int N) {
     index jNum = pow2(N-(tMax+1));
     index kNum = pow2(tMax);
     index jGap = pow2(tMax+1);
+    index kMask = kNum-1;
+    
+    double fac = (M_PI / (double) kNum);
     
     for (index j=0; j<jNum; j++) {
         for (index k=0; k<kNum; k++) {
             
             index j1k = j*jGap + kNum + k;
-            double theta = (M_PI / (double) kNum) * (j1k & (kNum-1));
+            double theta = fac * (j1k & kMask);
             psi[j1k] *= expI(theta);
         }
     }
