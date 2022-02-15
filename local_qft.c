@@ -6,8 +6,10 @@
  * optimally, that is without branching or superfluous memory access.
  * This file does not include multithreading (yet!)
  *
+ * It is important that inline functions are actually inlined, so pass optimisation
+ * flags (especially with Clang)
  * run with:
- *      gcc local_qft.c -o test; ./test
+ *      gcc local_qft.c -O1 -o test; ./test
  */
 
 #include "utilities.h"
@@ -18,20 +20,18 @@
 
 void applyHadamard(amp* psi, int t, int N) {
     
-    index jNum = pow2(N-(t+1));
-    index kNum = pow2(t);
-    index jGap = pow2(t+1);
-    index off = pow2(t);
+    const double fac = 1/sqrt(2);
     
-    double fac = 1/sqrt(2);
+    const index jNum = pow2(N-(t+1));
+    const index kNum = pow2(t);
     
     for (index j=0; j<jNum; j++) {
         for (index k=0; k<kNum; k++) {
-            
+    
             // |j>|0>|k> and |j>|1>|k>
-            index j0k = j*jGap + k;
-            index j1k = j0k + off;
-
+            index j0k = getZeroBitFromAffix(j, k, t);
+            index j1k = flipBit(j0k, t);
+            
             amp a1 = psi[j0k];
             amp a2 = psi[j1k];
             
@@ -42,27 +42,22 @@ void applyHadamard(amp* psi, int t, int N) {
 }
 
 void applyControlledPhase(amp* psi, int c, int t, double theta, int N) {
-    int t1 = (t < c)? t : c;
-    int t2 = (c > t)? c : t;
+    const int t1 = (t < c)? t : c;
+    const int t2 = (c > t)? c : t;
     
-    amp fac = expI(theta);
+    const amp fac = expI(theta);
     
     // phase shift |j>|1>|k>|1>|l>
     const index jNum = pow2(N-(t2+1));
     const index kNum = pow2(t2-(t1+1));
     const index lNum = pow2(t1);
     
-    const index jGap = pow2(t2+1);
-    const index kGap = pow2(t1+1);
-    
-    const index off = pow2(t1) + pow2(t2);
-    
     for (index j=0; j<jNum; j++) {
         for (index k=0; k<kNum; k++) {
             for (index l=0; l<lNum; l++) {
                 
-                index j0k0l = j*jGap + k*kGap + l;
-                index j1k1l = j0k0l + off;
+                index j0k0l = getZeroBitsFromAffixes(j, k, l, t2, t1);
+                index j1k1l = flipBit(flipBit(j0k0l, t2), t1);
                 
                 psi[j1k1l] *= fac;
             }
@@ -82,20 +77,14 @@ void applySwap(amp* psi, int t1, int t2, int N) {
     const index kNum = pow2(t2-(t1+1));
     const index lNum = pow2(t1);
     
-    const index jGap = pow2(t2+1);
-    const index kGap = pow2(t1+1);
-    
-    const index off1 = pow2(t1);
-    const index off2 = pow2(t2);
-    
     for (index j=0; j<jNum; j++) {
         for (index k=0; k<kNum; k++) {
             for (index l=0; l<lNum; l++) {
                 
-                index j0k0l = j*jGap + k*kGap + l;
-                index j0k1l = j0k0l + off1;
-                index j1k0l = j0k0l + off2;
-                
+                index j0k0l = getZeroBitsFromAffixes(j, k, l, t2, t1);
+                index j0k1l = flipBit(j0k0l, t1);
+                index j1k0l = flipBit(j0k0l, t2);
+
                 amp tmp = psi[j0k1l];
                 psi[j0k1l] = psi[j1k0l];
                 psi[j1k0l] = tmp;
@@ -137,17 +126,18 @@ void applyQFTCircuit(amp* psi, int N) {
 void applyMergedPhases(amp* psi, int tMax, int N) {
 
     // |j>|1>|k>
-    index jNum = pow2(N-(tMax+1));
-    index kNum = pow2(tMax);
-    index jGap = pow2(tMax+1);
-    index kMask = kNum-1;
+    const index jNum = pow2(N-(tMax+1));
+    const index kNum = pow2(tMax);
+    const index kMask = kNum-1;
     
-    double fac = (M_PI / (double) kNum);
+    const double fac = (M_PI / (double) kNum);
     
     for (index j=0; j<jNum; j++) {
         for (index k=0; k<kNum; k++) {
             
-            index j1k = j*jGap + kNum + k;
+            index j0k = getZeroBitFromAffix(j, k, tMax);
+            index j1k = flipBit(j0k, tMax);
+            
             double theta = fac * (j1k & kMask);
             psi[j1k] *= expI(theta);
         }
@@ -172,10 +162,10 @@ void applyQFTAlgorithm(amp* psi, int N) {
 
 int main() {
     
-    int N = 25;
+    int N = 24;
     amp* psi = createStatevector(N);
     initRandomStatevector(psi, N);
-    printf("[%d qubits]\n\n", N);
+    printf("[%d qubits]\n\n", N);    
     
     printf("contiguous phases\n");
     {
@@ -204,6 +194,7 @@ int main() {
         applyQFTAlgorithm(psi, N);
         STOP_TIMING()
     }
+    
 
     free(psi);
     return 0;

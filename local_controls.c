@@ -9,8 +9,10 @@
  * As a matter of convenience, this function will use real arrays in lieu of 
  * complex statevectors.
  *
+ * It is important that inline functions are actually inlined, so pass optimisation
+ * flags (especially with Clang)
  * run with:
- *      gcc local_controls.c -o test; ./test
+ *      gcc local_controls.c -O1 -o test; ./test
  */
 
 #include "utilities.h"

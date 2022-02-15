@@ -46,38 +46,46 @@ amp expI(double phase) {
 
 /* bit twiddling */
 
-static inline index pow2(int p) {
+static inline __attribute__((always_inline)) index pow2(int p) {
     return (1ULL << p);
 }
 
-static inline int getBit(index num, int i) {
-    return (num >> i) & 1;
-}
-
-static inline index flipBit(index num, int i) {
+static inline __attribute__((always_inline)) index flipBit(index num, int i) {
     return num ^ pow2(i);
 }
 
-static inline index insertZeroBit(index num, int i) {
+static inline __attribute__((always_inline)) int getBit(index num, int i) {
+    return (num >> i) & 1;
+}
+
+static inline __attribute__((always_inline)) index insertZeroBit(index num, int i) {
     index l = (num >> i) << i;
     index r = num - l;
     return (l << 1ULL) ^ r;
 }
 
-static inline index getBitMask(int* bits, int numBits) {
+static inline __attribute__((always_inline)) index getBitMask(int* bits, int numBits) {
     index mask = 0;
     for (int b=0; b<numBits; b++)
         mask = flipBit(mask, bits[b]);
     return mask;
 }
 
-static inline index truncateBits(index num, int numLowerBits) {
+static inline __attribute__((always_inline)) index truncateBits(index num, int numLowerBits) {
     return num & (pow2(numLowerBits) - 1);
 }
 
-static inline int bitsAreAllOne(index i, index mask) {
+static inline __attribute__((always_inline)) int bitsAreAllOne(index i, index mask) {
     return (mask & i) == mask;
 }
+
+static inline __attribute__((always_inline)) index getZeroBitFromAffix(index prefix, index suffix, int i) {
+    return (prefix << (i+1)) | suffix;
+}
+
+static inline __attribute__((always_inline)) index getZeroBitsFromAffixes(index prefix, index infix, index suffix, int t2, int t1) {
+    return (prefix << (t2+1)) | (infix << (t1+1)) | suffix;
+} 
 
 
 
