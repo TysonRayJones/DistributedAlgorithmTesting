@@ -57,18 +57,19 @@ void s_methodB(double* amps, index numAmps, int c) {
 }
 
 void s_methodC(double* amps, index numAmps, int c) {
-    index l1 = numAmps >> (c+1);
-    index l2 = (1LL << c);
-    index l3 = l2 << 1;
-    for (index l=0; l<l1; l++)
-        for (index m=0; m<l2; m++) {
-            index i = m + l * l3 + l2;
-            amps[i] = f(amps[i]);
+    const index jNum = numAmps >> (c+1);
+    const index iNum = pow2(c);
+    for (index j=0; j<jNum; j++) {
+        for (index i=0; i<iNum; i++) {
+            index j0i = getZeroBitFromAffix(j, i, c);
+            index j1i = flipBit(j0i, c);
+            amps[j1i] = f(amps[i]);
         }
+    }
 }
 
 void s_methodD(double* amps, index numAmps, int c) {
-    index l1 = numAmps >> 1;
+    const index l1 = numAmps >> 1;
     for (index m=0; m<l1; m++) {
         index i = flipBit(insertZeroBit(m, c), c);
         amps[i] = f(amps[i]);
@@ -101,12 +102,11 @@ void m_methodB(double* amps, index numAmps, int* ctrls, int numCtrls) {
 }
 
 void m_methodD(double* amps, index numAmps, int* ctrls, int numCtrls) {
-    index l1 = numAmps >> numCtrls;
+    const index l1 = numAmps >> numCtrls;
     for (index l=0; l<l1; l++) {
         index j=l;
-        for (int c=0; c<numCtrls; c++) {
+        for (int c=0; c<numCtrls; c++)
             j = flipBit(insertZeroBit(j, ctrls[c]), ctrls[c]);
-        }
         amps[j] = f(amps[j]);
     }
 }

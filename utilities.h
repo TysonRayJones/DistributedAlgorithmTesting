@@ -9,6 +9,11 @@
 
 
 
+/* we absoutely insist our inline demands are obeyed */
+#define FORCE_INLINE static inline __attribute__((always_inline))
+
+
+
 /* timing (repeats must be inside brace scope) */
 
 #define START_TIMING() \
@@ -30,13 +35,13 @@ typedef long long unsigned int index;
 
 typedef double complex amp;
 
-double getAbsSquared(amp val) {
+FORCE_INLINE double getAbsSquared(amp val) {
     double r = creal(val);
     double i = cimag(val);
     return r*r + i*i;
 }
 
-amp expI(double phase) {
+FORCE_INLINE amp expI(double phase) {
     double r = cos(phase);
     double i = sin(phase);
     return r + i*I;
@@ -46,44 +51,44 @@ amp expI(double phase) {
 
 /* bit twiddling */
 
-static inline __attribute__((always_inline)) index pow2(int p) {
+FORCE_INLINE index pow2(int p) {
     return (1ULL << p);
 }
 
-static inline __attribute__((always_inline)) index flipBit(index num, int i) {
+FORCE_INLINE index flipBit(index num, int i) {
     return num ^ pow2(i);
 }
 
-static inline __attribute__((always_inline)) int getBit(index num, int i) {
+FORCE_INLINE int getBit(index num, int i) {
     return (num >> i) & 1;
 }
 
-static inline __attribute__((always_inline)) index insertZeroBit(index num, int i) {
+FORCE_INLINE index insertZeroBit(index num, int i) {
     index l = (num >> i) << i;
     index r = num - l;
     return (l << 1ULL) ^ r;
 }
 
-static inline __attribute__((always_inline)) index getBitMask(int* bits, int numBits) {
+FORCE_INLINE index getBitMask(int* bits, int numBits) {
     index mask = 0;
     for (int b=0; b<numBits; b++)
         mask = flipBit(mask, bits[b]);
     return mask;
 }
 
-static inline __attribute__((always_inline)) index truncateBits(index num, int numLowerBits) {
+FORCE_INLINE index truncateBits(index num, int numLowerBits) {
     return num & (pow2(numLowerBits) - 1);
 }
 
-static inline __attribute__((always_inline)) int bitsAreAllOne(index i, index mask) {
+FORCE_INLINE int bitsAreAllOne(index i, index mask) {
     return (mask & i) == mask;
 }
 
-static inline __attribute__((always_inline)) index getZeroBitFromAffix(index prefix, index suffix, int i) {
+FORCE_INLINE index getZeroBitFromAffix(index prefix, index suffix, int i) {
     return (prefix << (i+1)) | suffix;
 }
 
-static inline __attribute__((always_inline)) index getZeroBitsFromAffixes(index prefix, index infix, index suffix, int t2, int t1) {
+FORCE_INLINE index getZeroBitsFromAffixes(index prefix, index infix, index suffix, int t2, int t1) {
     return (prefix << (t2+1)) | (infix << (t1+1)) | suffix;
 } 
 
