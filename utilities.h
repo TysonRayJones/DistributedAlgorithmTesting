@@ -69,9 +69,9 @@ FORCE_INLINE int getBit(INDEX num, int i) {
 }
 
 FORCE_INLINE INDEX insertZeroBit(INDEX num, int i) {
-    INDEX l = (num >> i) << i;
-    INDEX r = num - l;
-    return (l << 1ULL) ^ r;
+    INDEX l = (num >> i) << (i+1);
+    INDEX r = num & (pow2(i)-1);
+    return l | r;
 }
 
 FORCE_INLINE INDEX getBitMask(int* bits, int numBits) {
