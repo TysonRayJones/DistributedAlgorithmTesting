@@ -31,7 +31,7 @@
 
 /* number types */
 
-typedef long long unsigned int index;
+typedef long long unsigned int INDEX;
 
 typedef double complex amp;
 
@@ -51,44 +51,44 @@ FORCE_INLINE amp expI(double phase) {
 
 /* bit twiddling */
 
-FORCE_INLINE index pow2(int p) {
+FORCE_INLINE INDEX pow2(int p) {
     return (1ULL << p);
 }
 
-FORCE_INLINE index flipBit(index num, int i) {
+FORCE_INLINE INDEX flipBit(INDEX num, int i) {
     return num ^ pow2(i);
 }
 
-FORCE_INLINE int getBit(index num, int i) {
+FORCE_INLINE int getBit(INDEX num, int i) {
     return (num >> i) & 1;
 }
 
-FORCE_INLINE index insertZeroBit(index num, int i) {
-    index l = (num >> i) << i;
-    index r = num - l;
+FORCE_INLINE INDEX insertZeroBit(INDEX num, int i) {
+    INDEX l = (num >> i) << i;
+    INDEX r = num - l;
     return (l << 1ULL) ^ r;
 }
 
-FORCE_INLINE index getBitMask(int* bits, int numBits) {
-    index mask = 0;
+FORCE_INLINE INDEX getBitMask(int* bits, int numBits) {
+    INDEX mask = 0;
     for (int b=0; b<numBits; b++)
         mask = flipBit(mask, bits[b]);
     return mask;
 }
 
-FORCE_INLINE index truncateBits(index num, int numLowerBits) {
+FORCE_INLINE INDEX truncateBits(INDEX num, int numLowerBits) {
     return num & (pow2(numLowerBits) - 1);
 }
 
-FORCE_INLINE int bitsAreAllOne(index i, index mask) {
+FORCE_INLINE int bitsAreAllOne(INDEX i, INDEX mask) {
     return (mask & i) == mask;
 }
 
-FORCE_INLINE index getZeroBitFromAffix(index prefix, index suffix, int i) {
+FORCE_INLINE INDEX getZeroBitFromAffix(INDEX prefix, INDEX suffix, int i) {
     return (prefix << (i+1)) | suffix;
 }
 
-FORCE_INLINE index getZeroBitsFromAffixes(index prefix, index infix, index suffix, int t2, int t1) {
+FORCE_INLINE INDEX getZeroBitsFromAffixes(INDEX prefix, INDEX infix, INDEX suffix, int t2, int t1) {
     return (prefix << (t2+1)) | (infix << (t1+1)) | suffix;
 } 
 
@@ -115,45 +115,45 @@ amp getRandomComplex(amp min, amp max) {
 
 amp* createStatevector(int numQubits) {
     
-    index numAmps = pow2(numQubits);
+    INDEX numAmps = pow2(numQubits);
     amp* vec = malloc(numAmps * sizeof *vec);
     return vec;
 }
 
 void initRandomStatevector(amp* vec, int numQubits) {
     
-    index numAmps = pow2(numQubits);
+    INDEX numAmps = pow2(numQubits);
     double mag = 0;
-    for (index i=0; i<numAmps; i++) {
+    for (INDEX i=0; i<numAmps; i++) {
         vec[i] = getRandomComplex(-1-I, 1+I);
         mag += getAbsSquared(vec[i]);
     }
     
     mag = sqrt(mag);
-    for (index i=0; i<numAmps; i++)
+    for (INDEX i=0; i<numAmps; i++)
         vec[i] /= mag;
 }
 
 void initOnesStatevector(amp* vec, int numQubits) {
     
-    index numAmps = pow2(numQubits);
-    for (index i=0; i<numAmps; i++)
+    INDEX numAmps = pow2(numQubits);
+    for (INDEX i=0; i<numAmps; i++)
         vec[i] = 1;
 }
 
 void printStatevector(amp* vec, int numQubits) {
     
-    index numAmps = pow2(numQubits);
-    for (index i=0; i<numAmps; i++)
+    INDEX numAmps = pow2(numQubits);
+    for (INDEX i=0; i<numAmps; i++)
         printf("psi[%llu] = %g + i(%g)\n", i, creal(vec[i]), cimag(vec[i]));
     printf("\n");
 }
 
 void printStatevectorForMMA(amp* vec, int numQubits) {
     
-    index numAmps = pow2(numQubits);
+    INDEX numAmps = pow2(numQubits);
     printf("{");
-    for (index i=0; i<numAmps; i++) {
+    for (INDEX i=0; i<numAmps; i++) {
         printf("%.10f + I(%.10f)", creal(vec[i]), cimag(vec[i]));
         if (i < numAmps-1)
             printf(", ");

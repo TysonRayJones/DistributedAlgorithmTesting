@@ -21,15 +21,15 @@
 
 /* array management */
 
-void printSubArray(double* amps, index numAmps) {
-    for (index i=0; i<numAmps; i++) {
+void printSubArray(double* amps, INDEX numAmps) {
+    for (INDEX i=0; i<numAmps; i++) {
         printf("amp[%lld] = %g\n", i, amps[i]);
     }
     printf("\n");
 }
 
-void initArray(double* amps, index numAmps) {
-    for (index i=0; i<numAmps; i++)
+void initArray(double* amps, INDEX numAmps) {
+    for (INDEX i=0; i<numAmps; i++)
         amps[i] = 1;
 }
 
@@ -43,78 +43,79 @@ void initArray(double* amps, index numAmps) {
 
 /* single control methods */
 
-void s_methodA(double* amps, index numAmps, int c) {
-    for (index i=0; i<numAmps; i++)
+void s_methodA(double* amps, INDEX numAmps, int c) {
+    for (INDEX i=0; i<numAmps; i++)
         if (getBit(i, c))
             amps[i] = f(amps[i]);
 }
 
-void s_methodB(double* amps, index numAmps, int c) {
-    for (index i=0; i<numAmps; i++) {
+void s_methodB(double* amps, INDEX numAmps, int c) {
+    for (INDEX i=0; i<numAmps; i++) {
         int b = getBit(i, c);
         amps[i] = (1-b)*amps[i] + b*f(amps[i]);
     }
 }
 
-void s_methodC(double* amps, index numAmps, int c) {
-    const index jNum = numAmps >> (c+1);
-    const index iNum = pow2(c);
-    for (index j=0; j<jNum; j++) {
-        for (index i=0; i<iNum; i++) {
-            index j0i = getZeroBitFromAffix(j, i, c);
-            index j1i = flipBit(j0i, c);
+void s_methodC(double* amps, INDEX numAmps, int c) {
+    const INDEX jNum = numAmps >> (c+1);
+    const INDEX iNum = pow2(c);
+    for (INDEX j=0; j<jNum; j++) {
+        for (INDEX i=0; i<iNum; i++) {
+            INDEX j0i = getZeroBitFromAffix(j, i, c);
+            INDEX j1i = flipBit(j0i, c);
             amps[j1i] = f(amps[i]);
         }
     }
 }
 
-void s_methodD(double* amps, index numAmps, int c) {
-    const index l1 = numAmps >> 1;
-    for (index m=0; m<l1; m++) {
-        index i = flipBit(insertZeroBit(m, c), c);
+void s_methodD(double* amps, INDEX numAmps, int c) {
+    const INDEX l1 = numAmps >> 1;
+    for (INDEX m=0; m<l1; m++) {
+        INDEX i = flipBit(insertZeroBit(m, c), c);
         amps[i] = f(amps[i]);
     }
 }
 
 
-void (*s_methods[4]) (double* amps, index numAmps, int c) = {
+void (*s_methods[4]) (double* amps, INDEX numAmps, int c) = {
     s_methodA, s_methodB, s_methodC, s_methodD
 };
-char s_methodNames[4] = {'A', 'B', 'C', 'D'};
+char* s_methodNames[4] = {"A", "B", "C", "D"};
 
 
 
 /* many control methods */
 
-void m_methodA(double* amps, index numAmps, int* ctrls, int numCtrls) {
-    index cMask = getBitMask(ctrls, numCtrls);
-    for (index i=0; i<numAmps; i++)
+void m_methodA(double* amps, INDEX numAmps, int* ctrls, int numCtrls) {
+    INDEX cMask = getBitMask(ctrls, numCtrls);
+    for (INDEX i=0; i<numAmps; i++)
         if (bitsAreAllOne(i, cMask))
             amps[i] = f(amps[i]);
 }
 
-void m_methodB(double* amps, index numAmps, int* ctrls, int numCtrls) {
-    index cMask = getBitMask(ctrls, numCtrls);
-    for (index i=0; i<numAmps; i++) {
+void m_methodB(double* amps, INDEX numAmps, int* ctrls, int numCtrls) {
+    INDEX cMask = getBitMask(ctrls, numCtrls);
+    for (INDEX i=0; i<numAmps; i++) {
         int b = bitsAreAllOne(i, cMask);
         amps[i] = (1-b)*amps[i] + b*f(amps[i]);
     }
 }
 
-void m_methodD(double* amps, index numAmps, int* ctrls, int numCtrls) {
-    const index l1 = numAmps >> numCtrls;
-    for (index l=0; l<l1; l++) {
-        index j=l;
+void m_methodD(double* amps, INDEX numAmps, int* ctrls, int numCtrls) {
+    const INDEX l1 = numAmps >> numCtrls;
+    for (INDEX l=0; l<l1; l++) {
+        INDEX j=l;
         for (int c=0; c<numCtrls; c++)
             j = flipBit(insertZeroBit(j, ctrls[c]), ctrls[c]);
         amps[j] = f(amps[j]);
     }
 }
 
-void (*m_methods[3]) (double* amps, index numAmps, int* ctrls, int numCtrls) = {
+void (*m_methods[3]) (double* amps, INDEX numAmps, int* ctrls, int numCtrls) = {
     m_methodA, m_methodB, m_methodD
 };
-char m_methodNames[3] = {'A', 'B', 'D'};
+char* m_methodNames[3] = {"A", "B", "D"};
+
 
 
 
@@ -123,7 +124,7 @@ char m_methodNames[3] = {'A', 'B', 'D'};
 int main() {
     
     int numQubits = 27;
-    index numAmps = (1LL << numQubits);
+    INDEX numAmps = (1LL << numQubits);
     double* amps = malloc(numAmps * sizeof *amps);
     printf("[%d qubits]\n\n", numQubits);
     
@@ -134,7 +135,7 @@ int main() {
     
     for (int m=0; m<4; m++) {
         
-        printf("%c\n", s_methodNames[m]);
+        printf("%s\n", s_methodNames[m]);
         
         START_TIMING()
         
@@ -152,7 +153,7 @@ int main() {
     
     for (int m=0; m<3; m++) {
         
-        printf("%c\n", m_methodNames[m]);
+        printf("%s\n", m_methodNames[m]);
         
         START_TIMING()
         
