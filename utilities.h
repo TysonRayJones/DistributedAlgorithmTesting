@@ -26,6 +26,11 @@
     printf("\t\t%ld.%06ld (s)\n", \
         (long int) tval_result.tv_sec, \
         (long int) tval_result.tv_usec);
+        
+#define RECORD_TIMING(VAR) \
+    gettimeofday(&tval_after, NULL); \
+    timersub(&tval_after, &tval_before, &tval_result); \
+    VAR = tval_result.tv_sec + (1.0/1000000) * tval_result.tv_usec;
 
 
 

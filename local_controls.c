@@ -16,6 +16,7 @@
  */
 
 #include "utilities.h"
+#include "mmaformatter.h"
 
 
 
@@ -121,7 +122,7 @@ char* m_methodNames[3] = {"A", "B", "D"};
 
 /* launch */
 
-int main() {
+void simpleTest() {
     
     int numQubits = 27;
     INDEX numAmps = (1LL << numQubits);
@@ -165,6 +166,81 @@ int main() {
     
     
     free(amps);
+}
+
+
+void benchmarkingForPaper() {
+    
+    int numQubits = 31;
+    int numReps = 100;
+    int outPrec = 5;
+    char* outFN = "data/local_serial_single_control_benchmarks.txt";
+    
+    
+    INDEX numAmps = (1LL << numQubits);
+    double* amps = malloc(numAmps * sizeof *amps);
+    printf("[%d qubits]\n\n", numQubits);
+    
+    // you MUST init array before benchmarking, because the very first write to 
+    // heap memory has an overhead on some platforms! Funky!
+    initArray(amps, numAmps);
+    
+    double durs[4][numQubits];
+    double vars[4][numQubits];
+    
+    for (int m=0; m<4; m++) {
+        
+        for (int c=0; c<numQubits; c++) {
+            
+            initArray(amps, numAmps);
+            
+            double totalDur = 0;
+            double totalDurSquared = 0;
+            
+            for (int r=0; r<numReps; r++) {
+                
+                START_TIMING()
+                
+                s_methods[m](amps, numAmps, c);
+                
+                RECORD_TIMING(double dur);
+                
+                totalDur += dur;
+                totalDurSquared += dur*dur;
+            }
+        
+            
+            durs[m][c] = totalDur/numReps;
+            vars[m][c] = (totalDurSquared/numReps) - durs[m][c]*durs[m][c];
+        }
+    }
+    
+    
+    FILE* file = openAssocWrite(outFN);
+    writeStringToAssoc(file, "note", "timings are already per-rep");
+    writeIntToAssoc(file, "numQubits", numQubits);
+    writeIntToAssoc(file, "numReps", numReps);
+    writeIntToAssoc(file, "outPrec", outPrec);
+    for (int m=0; m<4; m++) {
+        char buff[50];
+        strcpy(buff, "dur_"); strcat(buff, s_methodNames[m]);
+        writeDoubleArrToAssoc(file, buff, durs[m], numQubits, outPrec);
+        strcpy(buff, "var_"); strcat(buff, s_methodNames[m]);
+        writeDoubleArrToAssoc(file, buff, vars[m], numQubits, outPrec);
+    }
+    closeAssocWrite(file);
+}
+
+
+
+
+
+
+int main() {
+    
+    // simpleTest();
+    
+    benchmarkingForPaper();
     
     return 0;
 }
