@@ -50,16 +50,18 @@ void initArray(double* amps, INDEX numAmps) {
 /* single control methods */
 
 void s_methodA(double* amps, INDEX numAmps, int c) {
+    INDEX i;
     #pragma omp parallel for shared(amps,numAmps,c) private(i) schedule(static)
-    for (INDEX i=0; i<numAmps; i++)
+    for (i=0; i<numAmps; i++)
         if (getBit(i, c))
             amps[i] = f(amps[i]);
 }
 
 void s_methodB(double* amps, INDEX numAmps, int c) {
+    INDEX i; int b;
     #pragma omp parallel for shared(amps,numAmps,c) private(i,b) schedule(static)
-    for (INDEX i=0; i<numAmps; i++) {
-        int b = getBit(i, c);
+    for (i=0; i<numAmps; i++) {
+        b = getBit(i, c);
         amps[i] = (1-b)*amps[i] + b*f(amps[i]);
     }
 }
@@ -67,11 +69,12 @@ void s_methodB(double* amps, INDEX numAmps, int c) {
 void s_methodC(double* amps, INDEX numAmps, int c) {
     INDEX jNum = numAmps >> (c+1);
     INDEX iNum = pow2(c);
+    INDEX j,i,j0i,j1i;
     #pragma omp parallel for shared(amps,numAmps,c,jNum,iNum) private(j,i,j0i,j1i) schedule(static) collapse(2)
-    for (INDEX j=0; j<jNum; j++) {
-        for (INDEX i=0; i<iNum; i++) {
-            INDEX j0i = getZeroBitFromAffix(j, i, c);
-            INDEX j1i = flipBit(j0i, c);
+    for (j=0; j<jNum; j++) {
+        for (i=0; i<iNum; i++) {
+            j0i = getZeroBitFromAffix(j, i, c);
+            j1i = flipBit(j0i, c);
             amps[j1i] = f(amps[i]);
         }
     }
@@ -79,9 +82,10 @@ void s_methodC(double* amps, INDEX numAmps, int c) {
 
 void s_methodD(double* amps, INDEX numAmps, int c) {
     INDEX l1 = numAmps >> 1;
+    INDEX m,i;
     #pragma omp parallel for shared(amps,numAmps,c,l1) private(m,i) schedule(static)
-    for (INDEX m=0; m<l1; m++) {
-        INDEX i = flipBit(insertZeroBit(m, c), c);
+    for (m=0; m<l1; m++) {
+        i = flipBit(insertZeroBit(m, c), c);
         amps[i] = f(amps[i]);
     }
 }
@@ -98,27 +102,30 @@ char* s_methodNames[4] = {"A", "B", "C", "D"};
 
 void m_methodA(double* amps, INDEX numAmps, int* ctrls, int numCtrls) {
     INDEX cMask = getBitMask(ctrls, numCtrls);
+    INDEX i;
     #pragma omp parallel for shared(amps,numAmps,ctrls,numCtrls,cMask) private(i) schedule(static)
-    for (INDEX i=0; i<numAmps; i++)
+    for (i=0; i<numAmps; i++)
         if (bitsAreAllOne(i, cMask))
             amps[i] = f(amps[i]);
 }
 
 void m_methodB(double* amps, INDEX numAmps, int* ctrls, int numCtrls) {
     INDEX cMask = getBitMask(ctrls, numCtrls);
+    INDEX i; int b;
     #pragma omp parallel for shared(amps,numAmps,ctrls,numCtrls,cMask) private(i,b) schedule(static)
-    for (INDEX i=0; i<numAmps; i++) {
-        int b = bitsAreAllOne(i, cMask);
+    for (i=0; i<numAmps; i++) {
+        b = bitsAreAllOne(i, cMask);
         amps[i] = (1-b)*amps[i] + b*f(amps[i]);
     }
 }
 
 void m_methodD(double* amps, INDEX numAmps, int* ctrls, int numCtrls) {
     INDEX lNum = numAmps >> numCtrls;
+    INDEX l,j; int c;
     #pragma omp parallel for shared(amps,numAmps,ctrls,numCtrls,lNum) private(l,j,c) schedule(static)
-    for (INDEX l=0; l<lNum; l++) {
-        INDEX j=l;
-        for (int c=0; c<numCtrls; c++)
+    for (l=0; l<lNum; l++) {
+        j=l;
+        for (c=0; c<numCtrls; c++)
             j = flipBit(insertZeroBit(j, ctrls[c]), ctrls[c]);
         amps[j] = f(amps[j]);
     }
