@@ -4,7 +4,7 @@
  * simulation of a single-target unitary gate. Note the extension
  * to distributed simulation requires edge cases for all methods (except 
  * A & B), to handle the scenarios when none or all local amplitudes
- * pass the control condition. This file does not include multithreading (yet!)
+ * pass the control condition.
  *
  * As a matter of convenience, this function will use real arrays in lieu of 
  * complex statevectors.
@@ -12,11 +12,16 @@
  * It is important that inline functions are actually inlined, so pass optimisation
  * flags (especially with Clang)
  * run with:
- *      gcc local_controls.c -O3 -lm -o test; ./test
+ *      gcc local_controls.c -O3 -lm -fopenmp -o test
+ *      ./test
  */
 
 #include "utilities.h"
 #include "mmaformatter.h"
+
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 
 
@@ -38,19 +43,21 @@ void initArray(double* amps, INDEX numAmps) {
 
 /* a stand-in function for modifying amplitudes */
 
-#define f(amp) (1.5 * pow(amp - .1,2))
+#define f(amp) (1.5 * pow(amp - .1, 2))
 
 
 
 /* single control methods */
 
 void s_methodA(double* amps, INDEX numAmps, int c) {
+    #pragma omp parallel for shared(amps,numAmps,c) private(i) schedule(static)
     for (INDEX i=0; i<numAmps; i++)
         if (getBit(i, c))
             amps[i] = f(amps[i]);
 }
 
 void s_methodB(double* amps, INDEX numAmps, int c) {
+    #pragma omp parallel for shared(amps,numAmps,c) private(i,b) schedule(static)
     for (INDEX i=0; i<numAmps; i++) {
         int b = getBit(i, c);
         amps[i] = (1-b)*amps[i] + b*f(amps[i]);
@@ -58,8 +65,9 @@ void s_methodB(double* amps, INDEX numAmps, int c) {
 }
 
 void s_methodC(double* amps, INDEX numAmps, int c) {
-    const INDEX jNum = numAmps >> (c+1);
-    const INDEX iNum = pow2(c);
+    INDEX jNum = numAmps >> (c+1);
+    INDEX iNum = pow2(c);
+    #pragma omp parallel for shared(amps,numAmps,c,jNum,iNum) private(j,i,j0i,j1i) schedule(static) collapse(2)
     for (INDEX j=0; j<jNum; j++) {
         for (INDEX i=0; i<iNum; i++) {
             INDEX j0i = getZeroBitFromAffix(j, i, c);
@@ -70,7 +78,8 @@ void s_methodC(double* amps, INDEX numAmps, int c) {
 }
 
 void s_methodD(double* amps, INDEX numAmps, int c) {
-    const INDEX l1 = numAmps >> 1;
+    INDEX l1 = numAmps >> 1;
+    #pragma omp parallel for shared(amps,numAmps,c,l1) private(m,i) schedule(static)
     for (INDEX m=0; m<l1; m++) {
         INDEX i = flipBit(insertZeroBit(m, c), c);
         amps[i] = f(amps[i]);
@@ -89,6 +98,7 @@ char* s_methodNames[4] = {"A", "B", "C", "D"};
 
 void m_methodA(double* amps, INDEX numAmps, int* ctrls, int numCtrls) {
     INDEX cMask = getBitMask(ctrls, numCtrls);
+    #pragma omp parallel for shared(amps,numAmps,ctrls,numCtrls,cMask) private(i) schedule(static)
     for (INDEX i=0; i<numAmps; i++)
         if (bitsAreAllOne(i, cMask))
             amps[i] = f(amps[i]);
@@ -96,6 +106,7 @@ void m_methodA(double* amps, INDEX numAmps, int* ctrls, int numCtrls) {
 
 void m_methodB(double* amps, INDEX numAmps, int* ctrls, int numCtrls) {
     INDEX cMask = getBitMask(ctrls, numCtrls);
+    #pragma omp parallel for shared(amps,numAmps,ctrls,numCtrls,cMask) private(i,b) schedule(static)
     for (INDEX i=0; i<numAmps; i++) {
         int b = bitsAreAllOne(i, cMask);
         amps[i] = (1-b)*amps[i] + b*f(amps[i]);
@@ -103,8 +114,9 @@ void m_methodB(double* amps, INDEX numAmps, int* ctrls, int numCtrls) {
 }
 
 void m_methodD(double* amps, INDEX numAmps, int* ctrls, int numCtrls) {
-    const INDEX l1 = numAmps >> numCtrls;
-    for (INDEX l=0; l<l1; l++) {
+    INDEX lNum = numAmps >> numCtrls;
+    #pragma omp parallel for shared(amps,numAmps,ctrls,numCtrls,lNum) private(l,j,c) schedule(static)
+    for (INDEX l=0; l<lNum; l++) {
         INDEX j=l;
         for (int c=0; c<numCtrls; c++)
             j = flipBit(insertZeroBit(j, ctrls[c]), ctrls[c]);
@@ -129,6 +141,8 @@ void simpleTest() {
     double* amps = malloc(numAmps * sizeof *amps);
     printf("[%d qubits]\n\n", numQubits);
     
+    initArray(amps, numAmps);
+    
     
     printf("single control\n");
 
@@ -140,7 +154,6 @@ void simpleTest() {
         
         START_TIMING()
         
-        initArray(amps, numAmps);
         s_methods[m](amps, numAmps, c);
 
         STOP_TIMING()
@@ -156,9 +169,10 @@ void simpleTest() {
         
         printf("%s\n", m_methodNames[m]);
         
+        initArray(amps, numAmps);
+        
         START_TIMING()
         
-        initArray(amps, numAmps);
         m_methods[m](amps, numAmps, ctrls, numCtrls);
         
         STOP_TIMING()
@@ -169,14 +183,9 @@ void simpleTest() {
 }
 
 
-void benchmarkingForPaper() {
+void benchmarkingForPaper(int numQubits, int numReps, char* outFN) {
     
-    int numQubits = 31;
-    int numReps = 100;
     int outPrec = 5;
-    char* outFN = "data/local_serial_single_control_benchmarks.txt";
-    
-    
     INDEX numAmps = (1LL << numQubits);
     double* amps = malloc(numAmps * sizeof *amps);
     printf("[%d qubits]\n\n", numQubits);
@@ -238,9 +247,12 @@ void benchmarkingForPaper() {
 
 int main() {
     
-    // simpleTest();
+    simpleTest();
     
-    benchmarkingForPaper();
+    //     int numQubits = 31;
+    // int numReps = 100;
+    // char* outFN = "data/local_serial_single_control_benchmarks.txt";
+    //benchmarkingForPaper(numQubits, numReps, outFN);
     
     return 0;
 }
