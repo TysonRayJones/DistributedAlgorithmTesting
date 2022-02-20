@@ -252,14 +252,19 @@ void benchmarkingForPaper(int numQubits, int numReps, char* outFN) {
 
 
 
-int main() {
+int main(int argc, char* argv[]) {
     
-    simpleTest();
-    
-    //     int numQubits = 31;
-    // int numReps = 100;
-    // char* outFN = "data/local_serial_single_control_benchmarks.txt";
-    //benchmarkingForPaper(numQubits, numReps, outFN);
+    if (argc == 1)
+        simpleTest();
+        
+    else if (argc == 4) {
+        int numQubits = atoi(argv[1]);
+        int numReps = atoi(argv[2]);
+        char* outFN = argv[3];
+        benchmarkingForPaper(numQubits, numReps, outFN);
+        
+    } else
+        printf("call as either:\n\t./exec\n\t./exec numQubits numReps outFN\n");
     
     return 0;
 }
