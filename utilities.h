@@ -114,6 +114,37 @@ amp getRandomComplex(amp min, amp max) {
     return re + I*im;
 }
 
+int getRandomInt(int min, int max) {
+    
+    return round(getRandomDecimal(min, max));
+}
+
+INDEX getRandomBitMask(int len, int numOnes) {
+    
+    INDEX mask = 0;
+    for (int n=0; n<numOnes; n++) {
+        
+        int i = getRandomInt(0, len-1);
+        while (getBit(mask, i))
+            i = getRandomInt(0, len-1);
+            
+        mask = flipBit(mask, i);
+    }
+    return mask;
+}
+
+void getSortedRandomSubReg(int* ret, int SubRegSize, int RegSize) {
+    
+    INDEX mask = getRandomBitMask(RegSize, SubRegSize);
+    
+    int q = 0;
+    for (int i=0; i<SubRegSize; i++) {
+        while (getBit(mask, q) != 1)
+            q++;
+        ret[i] = q++;
+    }
+}
+
 
 
 /* state-vector management */
@@ -144,6 +175,18 @@ void initOnesStatevector(amp* vec, int numQubits) {
     INDEX numAmps = pow2(numQubits);
     for (INDEX i=0; i<numAmps; i++)
         vec[i] = 1;
+}
+
+
+
+/* printing */
+
+void printIntArray(char* label, int* arr, int len) {
+    
+    printf("%s[%d] = {", label, len);
+    for (int i=0; i<len-1; i++)
+        printf("%d, ", arr[i]);
+    printf("%d}\n", arr[len-1]);
 }
 
 void printStatevector(amp* vec, int numQubits) {

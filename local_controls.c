@@ -160,9 +160,7 @@ void simpleTest() {
         printf("%s\n", s_methodNames[m]);
         
         START_TIMING()
-        
         s_methods[m](amps, numAmps, c);
-
         STOP_TIMING()
     }
     
@@ -179,9 +177,7 @@ void simpleTest() {
         initArray(amps, numAmps);
         
         START_TIMING()
-        
         m_methods[m](amps, numAmps, ctrls, numCtrls);
-        
         STOP_TIMING()
     }
     
@@ -190,7 +186,7 @@ void simpleTest() {
 }
 
 
-void benchmarkingForPaper(int numQubits, int numReps, char* outFN) {
+void s_benchmarking(int numQubits, int numReps, char* outFN) {
     
     int outPrec = 5;
     INDEX numAmps = (1LL << numQubits);
@@ -208,23 +204,19 @@ void benchmarkingForPaper(int numQubits, int numReps, char* outFN) {
         
         for (int c=0; c<numQubits; c++) {
             
-            initArray(amps, numAmps);
-            
             double totalDur = 0;
             double totalDurSquared = 0;
             
             for (int r=0; r<numReps; r++) {
+                initArray(amps, numAmps);
                 
                 START_TIMING()
-                
                 s_methods[m](amps, numAmps, c);
-                
                 RECORD_TIMING(double dur);
                 
                 totalDur += dur;
                 totalDurSquared += dur*dur;
             }
-        
             
             durs[m][c] = totalDur/numReps;
             vars[m][c] = (totalDurSquared/numReps) - durs[m][c]*durs[m][c];
@@ -245,7 +237,92 @@ void benchmarkingForPaper(int numQubits, int numReps, char* outFN) {
         writeDoubleArrToAssoc(file, buff, vars[m], numQubits, outPrec);
     }
     closeAssocWrite(file);
+    
+    free(amps);
 }
+
+
+
+
+void m_benchmarking(int numQubits, int numReps, char* outFN) {
+    
+    
+    int outPrec = 10;
+    INDEX numAmps = (1LL << numQubits);
+    double* amps = malloc(numAmps * sizeof *amps);
+    printf("[%d qubits]\n\n", numQubits);
+    
+    // you MUST init array before benchmarking, because the very first write to 
+    // heap memory has an overhead on some platforms! Funky!
+    initArray(amps, numAmps);
+    
+    
+    /* we obviously cannot try every {ctrls}, since there are O(2^(numQubits))
+     * choices! So we'll try every number of controls from 1 to all, and for each,
+     * try #numReps different random qubit indices. We'll make sure that each method 
+     * is trying the identical controls assignments too, so we don't have to worry about 
+     * sampling thresholds.
+     */
+     
+    double durs[3][numQubits+1];
+    double vars[3][numQubits+1];
+    for (int m=0; m<3; m++) {
+        for (int i=0; i<(numQubits+1); i++) {
+            durs[m][i] = -1;
+            vars[m][i] = -1;
+        }
+    }
+
+    
+    // try every possible #numCtrls
+    for (int numCtrls=2; numCtrls<=numQubits; numCtrls++) {
+        int ctrls[numCtrls];
+        
+        // obtain data
+        double totalDurs[3];
+        double totalDursSquared[3];
+        
+        for (int r=0; r<numReps; r++) {            
+            getSortedRandomSubReg(ctrls, numCtrls, numQubits);
+            
+            for (int m=0; m<3; m++) {                
+                initArray(amps, numAmps);    
+                            
+                START_TIMING();
+                m_methods[m](amps, numAmps, ctrls, numCtrls);
+                RECORD_TIMING(double dur);
+                
+                totalDurs[m] += dur;
+                totalDursSquared[m] += dur*dur;
+            }
+        }
+        
+        // process data
+        for (int m=0; m<3; m++) {
+            durs[m][numCtrls] = totalDurs[m]/numReps;
+            vars[m][numCtrls] = (totalDursSquared[m]/numReps) - durs[m][numCtrls]*durs[m][numCtrls];
+        }
+    }
+    
+    
+    FILE* file = openAssocWrite(outFN);
+    writeStringToAssoc(file, "note", "timings are already per-rep");
+    writeIntToAssoc(file, "numQubits", numQubits);
+    writeIntToAssoc(file, "numReps", numReps);
+    writeIntToAssoc(file, "outPrec", outPrec);
+    for (int m=0; m<3; m++) {
+        char buff[50];
+        strcpy(buff, "dur_"); strcat(buff, m_methodNames[m]);
+        writeDoubleArrToAssoc(file, buff, durs[m], numQubits+1, outPrec);
+        strcpy(buff, "var_"); strcat(buff, m_methodNames[m]);
+        writeDoubleArrToAssoc(file, buff, vars[m], numQubits+1, outPrec);
+    }
+    closeAssocWrite(file);
+    
+    
+    free(amps);
+}
+
 
 
 
@@ -254,17 +331,25 @@ void benchmarkingForPaper(int numQubits, int numReps, char* outFN) {
 
 int main(int argc, char* argv[]) {
     
+    srand(123456789);
+    
     if (argc == 1)
         simpleTest();
         
-    else if (argc == 4) {
-        int numQubits = atoi(argv[1]);
-        int numReps = atoi(argv[2]);
-        char* outFN = argv[3];
-        benchmarkingForPaper(numQubits, numReps, outFN);
+    else if (argc == 5 && argv[1][0] == 's') {
+        int numQubits = atoi(argv[2]);
+        int numReps = atoi(argv[3]);
+        char* outFN = argv[4];
+        s_benchmarking(numQubits, numReps, outFN);
+    
+    } else if (argc == 5 && argv[1][0] == 'm') {
+        int numQubits = atoi(argv[2]);
+        int numReps = atoi(argv[3]);
+        char* outFN = argv[4];
+        m_benchmarking(numQubits, numReps, outFN);
         
     } else
-        printf("call as either:\n\t./exec\n\t./exec numQubits numReps outFN\n");
+        printf("call as either:\n\t./exec\n\t./exec [s/m] numQubits numReps outFN\n");
     
     return 0;
 }
