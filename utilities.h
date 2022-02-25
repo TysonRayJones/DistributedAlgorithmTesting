@@ -31,6 +31,24 @@
     gettimeofday(&tval_after, NULL); \
     timersub(&tval_after, &tval_before, &tval_result); \
     VAR = tval_result.tv_sec + (1.0/1000000) * tval_result.tv_usec;
+    
+    
+
+/* analysis */
+
+void getAverageAndVariance(double* data, int lenData, double *av, double *var) {
+    // assumes data is similar size, to safely use two-pass algorithm
+    
+    double s = 0;
+    for (int i=0; i<lenData; i++)
+        s += data[i];
+    *av = s/lenData;
+    
+    s = 0;
+    for (int i=0; i<lenData; i++)
+        s += (data[i] - *av)*(data[i] - *av);
+    *var = s/(lenData - 1);
+}
 
 
 

@@ -204,8 +204,7 @@ void s_benchmarking(int numQubits, int numReps, char* outFN) {
         
         for (int c=0; c<numQubits; c++) {
             
-            double totalDur = 0;
-            double totalDurSquared = 0;
+            double rawDurs[numReps];
             
             for (int r=0; r<numReps; r++) {
                 initArray(amps, numAmps);
@@ -214,12 +213,10 @@ void s_benchmarking(int numQubits, int numReps, char* outFN) {
                 s_methods[m](amps, numAmps, c);
                 RECORD_TIMING(double dur);
                 
-                totalDur += dur;
-                totalDurSquared += dur*dur;
+                rawDurs[r] = dur;
             }
             
-            durs[m][c] = totalDur/numReps;
-            vars[m][c] = (totalDurSquared/numReps) - durs[m][c]*durs[m][c];
+            getAverageAndVariance(rawDurs, numReps, &durs[m][c], &vars[m][c]);
         }
     }
     
@@ -279,8 +276,7 @@ void m_benchmarking(int numQubits, int numReps, char* outFN) {
         int ctrls[numCtrls];
         
         // obtain data
-        double totalDurs[3];
-        double totalDursSquared[3];
+        double rawDurs[3][numReps];
         
         for (int r=0; r<numReps; r++) {            
             getSortedRandomSubReg(ctrls, numCtrls, numQubits);
@@ -292,16 +288,13 @@ void m_benchmarking(int numQubits, int numReps, char* outFN) {
                 m_methods[m](amps, numAmps, ctrls, numCtrls);
                 RECORD_TIMING(double dur);
                 
-                totalDurs[m] += dur;
-                totalDursSquared[m] += dur*dur;
+                rawDurs[m][r] = dur;
             }
         }
-        
+                
         // process data
-        for (int m=0; m<3; m++) {
-            durs[m][numCtrls] = totalDurs[m]/numReps;
-            vars[m][numCtrls] = (totalDursSquared[m]/numReps) - durs[m][numCtrls]*durs[m][numCtrls];
-        }
+        for (int m=0; m<3; m++)
+            getAverageAndVariance(rawDurs[m], numReps, &durs[m][numCtrls], &vars[m][numCtrls]);
     }
     
     
